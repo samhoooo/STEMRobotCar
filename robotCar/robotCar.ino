@@ -24,8 +24,8 @@ int randNumber = 0;
 int coordinateX = -1;  //Default coordinate X
 int coordinateY = -1;  //Default coordinate Y
 
-const int xLength = 20; //horizontal length of map
-const int yLength = 20; //vertical length of map
+const int xLength = 5; //horizontal length of map
+const int yLength = 5; //vertical length of map
 int routeMap[xLength][yLength]; //map array
 
 int currentXPos = 0;
@@ -144,8 +144,9 @@ void loop() {
     duration = pulseIn(Echo_pin,HIGH); 
     randomSeed(duration);
     randNumber=random(0,2);
-    //***********************
     
+    Serial.print("Current XPos:");Serial.println(currentXPos);
+    Serial.print("Current YPos:");Serial.println(currentYPos);
     
     /*
      *  **** Path Finding Algorithm by Sam ****
@@ -159,12 +160,14 @@ void loop() {
      *  for each direction
      *    if the next block is unseen
      *      choose that direction
+     *      
      *  if no direction is chose
      *      choose one direction randomly
      *      
     */
 
     routeMap[currentXPos][currentYPos] = 1;   //Mark current block as seen
+
     if(duration <= 1200){ //if obstacles
          //mark forward as obstacles
          int *pos;
@@ -173,24 +176,27 @@ void loop() {
     }
 
     for(int i=1;i<=4;i++){  //for each direction
-         int pos[2];
-         getForwardCoordinate(currentXPos,currentYPos,&pos);
+         int *pos = getForwardCoordinate(currentXPos,currentYPos,i);
+
          if (!(pos[0] < 0 || pos[0] > xLength || pos[1] < 0 || pos[1] > yLength)){  //if not went to the boundaries
-            if(routeMap[pos[0],pos[1]] == 0){ //if next block is unseen
+
+            if(routeMap[pos[0]][pos[1]] == 0){ //if next block is unseen
                 currentDirection = i; //set as current direction
+                //Serial.print("accepted direction:"); Serial.println(currentDirection);
                 directionDecided = true;
+                break;
             }
          }
     }
 
     while(directionDecided==false){
+       Serial.println("Cannot decide direction!");
        randomSeed(duration);
        randNumber=random(1,4);
-       int *pos;
-       pos = getForwardCoordinate(currentXPos,currentYPos,randNumber);
+       int *pos = getForwardCoordinate(currentXPos,currentYPos,randNumber);
        
        if (!(pos[0] < 0 || pos[0] > xLength || pos[1] < 0 || pos[1] > yLength)){  //if not went to the boundaries
-            if(routeMap[pos[0],pos[1]] == 2){ //if next block is not obstacles
+            if(routeMap[pos[0]][pos[1]] == 2){ //if next block is not obstacles
                 currentDirection = randNumber; //set as current direction
                 directionDecided = true;
             }
@@ -198,23 +204,24 @@ void loop() {
     }
 
     //execute directionDecided
-    if(directionDecided == 1){
+    if(currentDirection == 1){
         left();
+        Serial.println("Left");
+    }else if(currentDirection == 2){
         forward();
-    }else if(directionDecided == 2){
-        forward();
-    }else if(directionDecided == 3){
+        Serial.println("Forward");
+    }else if(currentDirection == 3){
         right();
-        forward();
-    }else if(directionDecided == 4){
-        right();
-        right();
-        forward();
+        Serial.println("Right");
+    }else if(currentDirection == 4){
+        //right();
+        //right();
+        //forward();
+        Serial.println("Back");
     }
 
     //update values
-    int *pos;
-    pos = getForwardCoordinate(currentXPos,currentYPos,directionDecided);
+    int *pos = getForwardCoordinate(currentXPos,currentYPos,currentDirection);
     currentXPos = pos[0];
     currentYPos = pos[1];
 }
