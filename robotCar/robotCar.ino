@@ -18,19 +18,21 @@ int l_pin[5] = {l_bluepin, l_pinkpin, l_yellowpin, l_orangepin, l_bluepin};  //1
 int r_pin[5] = {r_bluepin, r_pinkpin, r_yellowpin, r_orangepin, r_bluepin};  //1 dimensional array declaration of right motor with 5 elements 
 
 int duration = 0;
-int cycle = 235;
+int turnCycle = 235;
+int cycle = 480;
 int randNumber = 0;
 
 int coordinateX = -1;  //Default coordinate X
 int coordinateY = -1;  //Default coordinate Y
 
-const int xLength = 5; //horizontal length of map
-const int yLength = 5; //vertical length of map
+const int xLength = 3; //horizontal length of map
+const int yLength = 3; //vertical length of map
 int routeMap[xLength][yLength]; //map array
 
 int currentXPos = 0;
 int currentYPos = 0;
 int currentDirection = 2; //1=left, 2=front, 3=right, 4=back
+int pointingDirection = 2;
 boolean directionDecided = false;
 
 char output[100];//final output
@@ -51,10 +53,17 @@ void setup() {
       routeMap[i][j] = 0;
     }
   }
+
+  for(int i=yLength-1;i>=0;i--){
+      for(int j=0;j<xLength;j++){
+          Serial.print(routeMap[j][i]);
+      }
+      Serial.println();
+  }
 }    
 
 void left(){  //Rotate left function, note that the 2 motors are turning in the same direction
-    for (int steps = 0; steps <= cycle; steps++){      
+    for (int steps = 0; steps <= turnCycle; steps++){      
       for (int i = 0; i <= 3; i++) {
         for (int pin = 0; pin <= 3; pin++) {
           digitalWrite(l_pin[pin], LOW);
@@ -65,13 +74,13 @@ void left(){  //Rotate left function, note that the 2 motors are turning in the 
         digitalWrite(r_pin[i], HIGH);
         digitalWrite(r_pin[i + 1], HIGH);
         delay(2);    
-      }
+      } 
     }
     strcat(output,"1");
 }
 
 void right(){  //Rotate right function, note that the 2 motors are turning in the same direction
-    for (int steps = 0; steps <= cycle; steps++){      
+    for (int steps = 0; steps <= turnCycle; steps++){      
       for (int i = 0; i <= 3; i++) {
         for (int pin = 0; pin <= 3; pin++) {
           digitalWrite(l_pin[pin], LOW);
@@ -132,6 +141,7 @@ int *getForwardCoordinate(int currentXPos,int currentYPos,int currentDirection){
 }
 
 void loop() {
+    
     //initialize
     directionDecided = false;
     
@@ -144,9 +154,6 @@ void loop() {
     duration = pulseIn(Echo_pin,HIGH); 
     randomSeed(duration);
     randNumber=random(0,2);
-    
-    Serial.print("Current XPos:");Serial.println(currentXPos);
-    Serial.print("Current YPos:");Serial.println(currentYPos);
     
     /*
      *  **** Path Finding Algorithm by Sam ****
@@ -172,13 +179,14 @@ void loop() {
          //mark forward as obstacles
          int *pos;
          pos = getForwardCoordinate(currentXPos,currentYPos,currentDirection);
+         Serial.print("forward direction:");Serial.print(currentXPos);Serial.print(currentYPos);
          routeMap[pos[0]][pos[1]] = 2;
     }
 
     for(int i=1;i<=4;i++){  //for each direction
          int *pos = getForwardCoordinate(currentXPos,currentYPos,i);
 
-         if (!(pos[0] < 0 || pos[0] > xLength || pos[1] < 0 || pos[1] > yLength)){  //if not went to the boundaries
+         if (!(pos[0] < 0 || pos[0] > xLength-1 || pos[1] < 0 || pos[1] > yLength-1)){  //if not went to the boundaries
 
             if(routeMap[pos[0]][pos[1]] == 0){ //if next block is unseen
                 currentDirection = i; //set as current direction
@@ -190,39 +198,120 @@ void loop() {
     }
 
     while(directionDecided==false){
-       Serial.println("Cannot decide direction!");
-       randomSeed(duration);
+       randomSeed(analogRead(A5));
        randNumber=random(1,4);
+       Serial.print(randNumber);
        int *pos = getForwardCoordinate(currentXPos,currentYPos,randNumber);
+       //Serial.print(currentXPos);Serial.print(currentYPos);
        
-       if (!(pos[0] < 0 || pos[0] > xLength || pos[1] < 0 || pos[1] > yLength)){  //if not went to the boundaries
-            if(routeMap[pos[0]][pos[1]] == 2){ //if next block is not obstacles
+       if (!(pos[0] < 0 || pos[0] > xLength-1 || pos[1] < 0 || pos[1] > yLength-1)){  //if not went to the boundaries
+            if(routeMap[pos[0]][pos[1]] != 2){ //if next block is not obstacles
+                Serial.println("Randomly decide direction");
                 currentDirection = randNumber; //set as current direction
                 directionDecided = true;
             }
        }
+
+       boolean finished = true;
+       //Check if the map is completed
+       for(int i=yLength-1;i>=0;i--){
+          for(int j=0;j<xLength;j++){
+              if(routeMap[j][i]==0){
+                finished = false;
+              }
+          }
+       }
+       if(finished==true){
+          Serial.println("Complete");
+          for (;;);
+       }
     }
 
     //execute directionDecided
-    if(currentDirection == 1){
-        left();
-        Serial.println("Left");
-    }else if(currentDirection == 2){
-        forward();
-        Serial.println("Forward");
-    }else if(currentDirection == 3){
-        right();
-        Serial.println("Right");
-    }else if(currentDirection == 4){
-        //right();
-        //right();
-        //forward();
-        Serial.println("Back");
+    if(pointingDirection == currentDirection){
+      forward();
+      pointingDirection = currentDirection;
+      Serial.println("Forward");
+    }else if(pointingDirection == 2 && currentDirection==1){
+      left();
+      forward();
+      pointingDirection = 1;
+      Serial.println("Left");
+    }else if(pointingDirection == 2 && currentDirection==3){
+      right();
+      forward();
+      pointingDirection = 3;
+      Serial.println("Right");
+    }else if(pointingDirection == 2 && currentDirection==4){
+      right();
+      right();
+      forward();
+      pointingDirection = 4;
+      Serial.println("Back");
+    }else if(pointingDirection == 1 && currentDirection==2){
+      right();
+      forward();
+      pointingDirection = 2;
+      Serial.println("Right");
+    }else if(pointingDirection == 1 && currentDirection==3){
+      right();
+      right();
+      forward();
+      pointingDirection = 3;
+      Serial.println("Back");
+    }else if(pointingDirection == 1 && currentDirection==4){
+      left();
+      forward();
+      pointingDirection = 4;
+      Serial.println("Left");
+    }else if(pointingDirection == 3 && currentDirection==1){
+      right();
+      right();
+      forward();
+      Serial.println("Back");
+    }else if(pointingDirection == 3 && currentDirection==2){
+      left();
+      forward();
+      pointingDirection = 2;
+      Serial.println("Left");
+    }else if(pointingDirection == 3 && currentDirection==4){
+      right();
+      forward();
+      pointingDirection = 4;
+      Serial.println("Right");
+    }else if(pointingDirection == 4 && currentDirection==1){
+      right();
+      forward();
+      pointingDirection = 1;
+      Serial.println("Right");
+    }else if(pointingDirection == 4 && currentDirection==2){
+      right();
+      right();
+      forward();
+      pointingDirection = 2;
+      Serial.println("Back");
+    }else if(pointingDirection == 4 && currentDirection==3){
+      left();
+      forward();
+      pointingDirection = 3;
+      Serial.println("Left");
     }
+
 
     //update values
     int *pos = getForwardCoordinate(currentXPos,currentYPos,currentDirection);
     currentXPos = pos[0];
     currentYPos = pos[1];
+
+    
+    for(int i=yLength-1;i>=0;i--){
+      for(int j=0;j<xLength;j++){
+          Serial.print(routeMap[j][i]);
+      }
+      Serial.println();
+    }
+    
+    Serial.print("xpos"); Serial.println(currentXPos);
+    Serial.print("ypos"); Serial.println(currentYPos);
 }
 
