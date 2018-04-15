@@ -69,6 +69,7 @@ void left(){  //Rotate left function, note that the 2 motors are turning in the 
         delay(2);    
       } 
     }
+    pointingDirection ＝ 1;
     strcat(output,"1");
 }
 
@@ -86,6 +87,7 @@ void right(){  //Rotate right function, note that the 2 motors are turning in th
         delay(2);    
       }
     }
+    pointingDirection ＝ 3;
     strcat(output,"3");
 }
 
