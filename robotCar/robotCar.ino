@@ -25,8 +25,8 @@ int randNumber = 0;
 int coordinateX = -1;  //Default coordinate X
 int coordinateY = -1;  //Default coordinate Y
 
-const int xLength = 20; //horizontal length of map
-const int yLength = 20; //vertical length of map
+const int xLength = 15; //horizontal length of map
+const int yLength = 15; //vertical length of map
 int routeMap[xLength][yLength]; //map array
 
 int currentXPos = 0;
